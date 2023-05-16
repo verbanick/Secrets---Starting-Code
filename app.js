@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const port = 3000;
 const mongoose = require('mongoose');
+const encrypt = require('mongoose-encryption');
 
 const app = express();
 
@@ -19,10 +20,14 @@ async function main() {
     await mongoose.connect('mongodb://127.0.0.1:27017/userDB');
 }
 
-const userSchema = {
+const userSchema = new mongoose.Schema({
     email: String,
     password: String
-}
+});
+
+const secret = "Thisismylittlesecretdonotshareever";
+
+userSchema.plugin(encrypt, {secret: secret, encryptedFields: ['password']});
 
 const User = new mongoose.model("User", userSchema);
 
@@ -33,8 +38,6 @@ app.get("/", (req, res) => {
 app.get("/login", (req, res) => {
     res.render("login");
 })
-
-////////////////////////////Register Page Routing ///////////////////////////////
 
 app.get("/register", (req, res) => {
         res.render("register");
@@ -71,5 +74,5 @@ app.post("/login", (req,res) =>{
 })
 
 app.listen(port, () => {
-    console.log('Example app listening on port ${port}')
+    console.log('Example app listening on port ($port)')
 })
