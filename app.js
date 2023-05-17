@@ -65,7 +65,6 @@ app.get("/login", (req, res, next) => {
     res.render("login");
 });
 
-
 app.get("/register", (req, res) => {
         res.render("register");
     });
