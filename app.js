@@ -1,5 +1,7 @@
 //jshint esversion:6
 require('dotenv').config();
+
+const findOrCreate = require('mongoose-findorcreate');
 const express = require('express');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
@@ -9,9 +11,11 @@ const session = require('express-session');
 const passport = require('passport');
 const LocalStrategy = require('passport-local');
 const passportLocalMongoose = require('passport-local-mongoose');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 
 const app = express();
+const env = require('dotenv').config;
 
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
@@ -24,7 +28,8 @@ app.set('trust proxy', 1) // trust first proxy
 app.use(session({
   secret: 'I believe in the future of agriculture.',
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  cookie: {}
 }));
 
 app.use(passport.initialize());
@@ -38,10 +43,13 @@ async function main() {
 
 const userSchema = new mongoose.Schema({
     email: String,
-    password: String
+    password: String,
+    googleId: String
 });
 
+////////////////////////// Plugins ////////////////////////////
 userSchema.plugin(passportLocalMongoose);
+userSchema.plugin(findOrCreate);
 
 const User = new mongoose.model("User", userSchema);
 
@@ -57,9 +65,33 @@ passport.deserializeUser((user,done) =>{
     });
 });
 
+passport.use(new GoogleStrategy({
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/secrets",
+    userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
+  },
+  function(accessToken, refreshToken, profile, cb) {
+    console.log(profile);
+    User.findOrCreate({ googleId: profile.id }, function (err, user) {
+      return cb(err, user);
+    });
+  }
+));
+
 app.get("/", (req, res) => {
     res.render("home");
 })
+
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile'] }));
+
+app.get('/auth/google/secrets', 
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  function(req, res) {
+    // Successful authentication, redirect home.
+    res.redirect('/secrets');
+  });
 
 app.get("/login", (req, res, next) => {
     res.render("login");
