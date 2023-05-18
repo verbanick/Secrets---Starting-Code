@@ -44,7 +44,8 @@ async function main() {
 const userSchema = new mongoose.Schema({
     email: String,
     password: String,
-    googleId: String
+    googleId: String,
+    secret: String
 });
 
 ////////////////////////// Plugins ////////////////////////////
@@ -101,8 +102,18 @@ app.get("/register", (req, res) => {
     });
 
 app.get("/secrets", (req, res) => {
+    User.find({"secret":{$ne: null}})
+        .then(foundUser => {
+                res.render("secrets", {usersWithSecrets: foundUser})
+        })
+        .catch(err => {
+            console.log(err);
+        })
+    });
+
+app.get("/submit", (req,res) => {
     if (req.isAuthenticated()) {
-        res.render("secrets");
+        res.render("submit");
     } else {
         res.redirect("/login")
     }
@@ -153,8 +164,24 @@ app.post("/login", (req,res) =>{
     });
 }); 
 
-
+app.post("/submit", (req, res) => {
+    console.log(req.user.id);
+    User.findById(req.user.id)
+    .then(foundUser => {
+        if (foundUser) {
+            foundUser.secret = req.body.secret;
+            return foundUser.save();
+        }
+        return null;
+    })
+    .then(() => {
+        res.redirect("/secrets");
+    })
+    .catch(err => {
+        console.log(err);
+    });
+});
 
 app.listen(port, () => {
-    console.log('Example app listening on port ($port)')
+    console.log(`Example app listening on port ${port}`);
 })
